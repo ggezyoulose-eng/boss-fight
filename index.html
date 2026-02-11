@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>タップボスバトル＋ガチャ</title>
+<style>
+body {
+    background:#111;
+    color:white;
+    font-family:sans-serif;
+    text-align:center;
+    margin:0;
+}
+h1 { margin:10px; }
+
+#stats { font-size:18px; margin:10px; }
+
+#bossSelect button {
+    padding:8px 12px;
+    margin:4px;
+    font-size:14px;
+}
+
+#bossArea {
+    font-size:22px;
+    margin:20px;
+}
+
+#attackBtn {
+    width:90%;
+    height:90px;
+    font-size:28px;
+    background:#e53935;
+    color:white;
+    border:none;
+    border-radius:15px;
+    margin:20px auto;
+    display:block;
+}
+
+#attackBtn:active { background:#ff7043; }
+
+#log { min-height:24px; }
+
+#zukan {
+    margin-top:20px;
+    border-top:1px solid #555;
+    padding-top:10px;
+}
+</style>
+</head>
+<body>
+
+<h1>⚔️ タップボスバトル</h1>
+
+<div id="stats">
+攻撃力：<span id="atk">1</span><br>
+🪙 コイン：<span id="coin">0</span>
+</div>
+
+<h2>🧟 ボス選択</h2>
+<div id="bossSelect"></div>
+
+<div id="bossArea"></div>
+
+<button id="attackBtn" onclick="attack()">攻撃！</button>
+
+<div id="log"></div>
+
+<hr>
+
+<button onclick="gacha()">🎰 ノーマルガチャ（100コイン）</button>
+<div id="gachaResult"></div>
+
+<div id="zukan">
+<h2>📖 図鑑</h2>
+<div id="zukanList"></div>
+</div>
+
+<button onclick="resetData()">データリセット</button>
+
+<script>
+// ===== ボス定義 =====
+const bosses = [
+    { name:"スライムキング", maxHp:100, unlocked:true, drop:[20,30] },
+    { name:"ダークウルフ", maxHp:250, unlocked:false, drop:[60,80] },
+    { name:"フレイムドラゴン", maxHp:450, unlocked:false, drop:[120,160] },
+    { name:"虚無の王", maxHp:800, unlocked:false, drop:[250,350] },
+
+    { name:"アビスナイト", maxHp:1200, unlocked:false, drop:[400,500] },
+    { name:"ヘルゴーレム", maxHp:1800, unlocked:false, drop:[600,750] },
+    { name:"カオスビースト", maxHp:2600, unlocked:false, drop:[900,1100] },
+    { name:"ネクロマンサー", maxHp:3500, unlocked:false, drop:[1300,1600] },
+    { name:"古代竜バハムート", maxHp:4800, unlocked:false, drop:[1800,2200] },
+    { name:"虚空の監視者", maxHp:6500, unlocked:false, drop:[2500,3000] },
+    { name:"星喰らい", maxHp:8500, unlocked:false, drop:[3500,4200] },
+    { name:"時空破壊者", maxHp:11000, unlocked:false, drop:[5000,6000] },
+    { name:"終焉の神", maxHp:15000, unlocked:false, drop:[8000,10000] },
+    { name:"創世の超越者", maxHp:22000, unlocked:false, drop:[12000,15000] }
+];
+
+let currentBoss = null;
+let hp = 0;
+let coin = 0;
+let atk = 1;
+
+// ===== ガチャ図鑑 =====
+const zukan = {
+    "レア": { c:0, atk:1 },
+    "スーパーレア": { c:0, atk:3 },
+    "ハイパーレア": { c:0, atk:5 },
+    "ウルトラレア": { c:0, atk:10 },
+    "レジェンドレア": { c:0, atk:15 }
+};
+
+// ===== ボス選択 =====
+function updateBossSelect() {
+    const div = document.getElementById("bossSelect");
+    div.innerHTML = "";
+    bosses.forEach((b,i)=>{
+        const btn = document.createElement("button");
+        btn.textContent = b.unlocked ? b.name : "？？？";
+        btn.disabled = !b.unlocked;
+        btn.onclick = ()=>selectBoss(i);
+        div.appendChild(btn);
+    });
+}
+
+function selectBoss(i) {
+    currentBoss = i;
+    hp = bosses[i].maxHp;
+    updateBoss();
+    document.getElementById("log").textContent = "";
+}
+
+function updateBoss() {
+    if (currentBoss === null) return;
+    document.getElementById("bossArea").innerHTML =
+        `ボス：${bosses[currentBoss].name}<br>HP：${hp}/${bosses[currentBoss].maxHp}`;
+}
+
+// ===== 戦闘 =====
+function attack() {
+    if (currentBoss === null || hp <= 0) return;
+
+    hp -= atk;
+    if (hp < 0) hp = 0;
+    updateBoss();
+
+    if (hp === 0) {
+        const d = bosses[currentBoss].drop;
+        const drop = Math.floor(Math.random()*(d[1]-d[0]+1))+d[0];
+        coin += drop;
+        document.getElementById("coin").textContent = coin;
+
+        document.getElementById("log").textContent =
+            `${bosses[currentBoss].name} 撃破！🪙${drop}コイン獲得！`;
+
+        if (bosses[currentBoss+1]) bosses[currentBoss+1].unlocked = true;
+        updateBossSelect();
+        saveGame();
+    }
+}
+
+// ===== ガチャ =====
+function gacha() {
+    if (coin < 100) {
+        document.getElementById("gachaResult").textContent = "コインが足りない！";
+        return;
+    }
+    coin -= 100;
+    document.getElementById("coin").textContent = coin;
+
+    const r = Math.random()*100;
+    let res;
+    if (r < 50) res="レア";
+    else if (r < 75) res="スーパーレア";
+    else if (r < 90) res="ハイパーレア";
+    else if (r < 98) res="ウルトラレア";
+    else res="レジェンドレア";
+
+    zukan[res].c++;
+    atk += zukan[res].atk;
+
+    document.getElementById("atk").textContent = atk;
+    document.getElementById("gachaResult").textContent =
+        `🎉 ${res}！（攻撃力 +${zukan[res].atk}）`;
+
+    updateZukan();
+    saveGame();
+}
+
+function updateZukan() {
+    document.getElementById("zukanList").innerHTML =
+        Object.keys(zukan)
+        .map(k=>`${k} × ${zukan[k].c}（攻撃力+${zukan[k].c*zukan[k].atk}）`)
+        .join("<br>");
+}
+
+// ===== セーブ / ロード =====
+function saveGame() {
+    localStorage.setItem("tapBossSave", JSON.stringify({
+        coin, atk,
+        bosses: bosses.map(b=>b.unlocked),
+        zukan: Object.fromEntries(
+            Object.entries(zukan).map(([k,v])=>[k,v.c])
+        )
+    }));
+}
+
+function loadGame() {
+    const data = localStorage.getItem("tapBossSave");
+    if (!data) return;
+    const save = JSON.parse(data);
+
+    coin = save.coin;
+    atk = save.atk;
+    save.bosses.forEach((u,i)=>{ if(bosses[i]) bosses[i].unlocked=u; });
+    Object.keys(save.zukan).forEach(k=>zukan[k].c=save.zukan[k]);
+
+    document.getElementById("coin").textContent = coin;
+    document.getElementById("atk").textContent = atk;
+}
+
+// ===== リセット =====
+function resetData() {
+    localStorage.removeItem("tapBossSave");
+    location.reload();
+}
+
+// 初期化
+loadGame();
+updateBossSelect();
+updateZukan();
+</script>
+
+</body>
+</html>
